@@ -22,7 +22,7 @@ public class PersistExample {
 
         integerRdd.persist(StorageLevel.MEMORY_ONLY());
 
-        integerRdd.reduce((x, y) -> x * y);
+        System.out.println(integerRdd.reduce((x, y) -> x * y));
 
         integerRdd.count();
     }
