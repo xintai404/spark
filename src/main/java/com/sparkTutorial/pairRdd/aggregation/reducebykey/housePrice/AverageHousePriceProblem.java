@@ -1,5 +1,17 @@
 package com.sparkTutorial.pairRdd.aggregation.reducebykey.housePrice;
 
+import org.apache.log4j.Logger;
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.function.Function2;
+import org.apache.spark.api.java.function.PairFunction;
+import scala.Tuple2;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+
+import java.util.Map;
 
 public class AverageHousePriceProblem {
 
@@ -34,6 +46,31 @@ public class AverageHousePriceProblem {
 
            3, 1 and 2 mean the number of bedrooms. 325000 means the average price of houses with 3 bedrooms is 325000.
          */
+        Logger.getLogger("org").setLevel(Level.ERROR);
+        SparkConf conf = new SparkConf().setAppName("avgHousePrice").setMaster("local[2]");
+        JavaSparkContext sc = new JavaSparkContext(conf);
+
+        JavaRDD<String> lines = sc.textFile("in/RealEstate.csv");
+        JavaRDD<String> cleanedLines = lines.filter(line -> !line.contains("Bedrooms"));
+        JavaPairRDD<String, AvgCount> housePairRdd = cleanedLines.mapToPair(
+                 s -> new Tuple2<>(s.split(",")[3],
+                        new AvgCount(1, Double.parseDouble(s.split(",")[2]))));
+
+        JavaPairRDD<String, AvgCount> houseTotalRdd = housePairRdd.reduceByKey((x,y)->
+                       new AvgCount(x.getCount()+y.getCount(), x.getTotal()+y.getTotal()));
+
+        System.out.println("housePriceTotal: ");
+        for(Map.Entry<String, AvgCount>housePriceTotalPair: houseTotalRdd.collectAsMap().entrySet()) {
+            System.out.println(housePriceTotalPair.getKey() + " : " + housePriceTotalPair.getValue());
+        }
+
+        JavaPairRDD<String, Double>housePriceAvg = houseTotalRdd.mapValues(avgCount -> avgCount.getTotal() / avgCount.getCount());
+
+        System.out.println("housePriceAvg: ");
+        for (Map.Entry<String, Double> housePriceAvgPair : housePriceAvg.collectAsMap().entrySet()) {
+            System.out.println(housePriceAvgPair.getKey() + " : " + housePriceAvgPair.getValue());
+        }
+
     }
 
 }
